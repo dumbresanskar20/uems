@@ -1,39 +1,35 @@
 const nodemailer = require('nodemailer');
 
 // Create transporter based on SMTP settings
+// Create transporter based on SMTP settings
 const createTransporter = (smtpConfig) => {
-  // If it's gmail, using the 'service' property is more reliable
-  if (smtpConfig.host?.includes('gmail.com')) {
+  const port = parseInt(smtpConfig.port) || 587;
+  const isGmail = smtpConfig.host?.includes('gmail.com');
+
+  if (isGmail) {
     return nodemailer.createTransport({
       service: 'gmail',
-      auth: {
-        user: smtpConfig.user,
-        pass: smtpConfig.pass,
-      },
+      auth: { user: smtpConfig.user, pass: smtpConfig.pass },
     });
   }
 
-  // Standard SMTP configuration (works for Brevo, SendGrid, etc.)
+  // Standard SMTP (Brevo, SendGrid, etc.)
   return nodemailer.createTransport({
     host: smtpConfig.host,
-    port: parseInt(smtpConfig.port) || 587,
-    secure: parseInt(smtpConfig.port) === 465, // true for 465, false for other ports
-    auth: {
-      user: smtpConfig.user,
-      pass: smtpConfig.pass,
-    },
-    // Brevo and others often require this
-    tls: {
-      rejectUnauthorized: false
-    }
+    port: port,
+    secure: port === 465, // Use SSL/TLS for port 465
+    auth: { user: smtpConfig.user, pass: smtpConfig.pass },
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 10000,
   });
 };
 
 // Get platform transporter (fallback)
 const getPlatformTransporter = () => {
   return createTransporter({
-    host: process.env.PLATFORM_SMTP_HOST,
-    port: process.env.PLATFORM_SMTP_PORT,
+    host: process.env.PLATFORM_SMTP_HOST || 'smtp-relay.brevo.com',
+    port: process.env.PLATFORM_SMTP_PORT || 465, // Default to 465 for Render
     user: process.env.PLATFORM_SMTP_USER,
     pass: process.env.PLATFORM_SMTP_PASS,
   });

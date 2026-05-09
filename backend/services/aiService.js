@@ -14,7 +14,7 @@ const initAI = () => {
 initAI();
 
 const analyzeWithGemini = async (prompt) => {
-  const model = geminiClient.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = geminiClient.getGenerativeModel({ model: 'gemini-pro' });
   const result = await model.generateContent(prompt);
   return result.response.text();
 };
