@@ -1,67 +1,76 @@
 const nodemailer = require('nodemailer');
 
-// Create transporter based on SMTP settings
-const createTransporter = (smtpConfig) => {
-  const port = parseInt(smtpConfig.port) || 587;
-  const isGmail = smtpConfig.host?.includes('gmail.com');
+// Send email via Brevo API (Recommended for Render)
+const sendViaAPI = async (to, subject, html, fromName) => {
+  const apiKey = process.env.PLATFORM_SMTP_PASS;
+  const fromEmail = process.env.PLATFORM_EMAIL;
 
-  if (isGmail) {
-    return nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: smtpConfig.user, pass: smtpConfig.pass },
-    });
+  if (!apiKey || !fromEmail) {
+    throw new Error('Brevo API key or Platform Email missing in environment variables.');
   }
 
-  // Standard SMTP (Brevo, SendGrid, etc.)
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': apiKey,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: fromName || 'UEMS Platform', email: fromEmail },
+      to: [{ email: to }],
+      subject: subject,
+      htmlContent: html,
+    }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Failed to send email via Brevo API');
+  }
+  return result;
+};
+
+// Create transporter for custom organization SMTP (Optional fallback)
+const createTransporter = (smtpConfig) => {
   return nodemailer.createTransport({
     host: smtpConfig.host,
-    port: port,
-    secure: port === 465,
+    port: parseInt(smtpConfig.port) || 587,
+    secure: parseInt(smtpConfig.port) === 465,
     auth: { user: smtpConfig.user, pass: smtpConfig.pass },
     tls: { rejectUnauthorized: false },
-    connectionTimeout: 8000, // 8 seconds
-    greetingTimeout: 8000,
   });
 };
 
-// Get platform transporter (fallback)
-const getPlatformTransporter = () => {
-  return createTransporter({
-    host: process.env.PLATFORM_SMTP_HOST || 'smtp-relay.brevo.com',
-    port: process.env.PLATFORM_SMTP_PORT || 465,
-    user: process.env.PLATFORM_SMTP_USER,
-    pass: process.env.PLATFORM_SMTP_PASS,
-  });
-};
-
-// Resolve transporter - branch > org > platform
-const resolveTransporter = (organization, branch) => {
-  if (branch?.smtpEmail && branch?.smtpPassword && branch?.smtpHost) {
-    return {
-      transporter: createTransporter({
+// Resolve sender and send email
+const sendEmail = async ({ to, subject, html, organization, branch, fromName }) => {
+  try {
+    // If we have custom SMTP for branch/org, use it. Otherwise, use Platform API.
+    if (branch?.smtpEmail && branch?.smtpPassword) {
+      const transporter = createTransporter({
         host: branch.smtpHost,
-        port: branch.smtpPort || 587,
+        port: branch.smtpPort,
         user: branch.smtpEmail,
-        pass: branch.smtpPassword,
-      }),
-      from: `"${branch.smtpSenderName || branch.name}" <${branch.smtpEmail}>`,
-    };
-  }
-  if (organization?.smtpEmail && organization?.smtpPassword && organization?.smtpHost) {
-    return {
-      transporter: createTransporter({
+        pass: branch.smtpPassword
+      });
+      await transporter.sendMail({ from: branch.smtpEmail, to, subject, html });
+    } else if (organization?.smtpEmail && organization?.smtpPassword) {
+      const transporter = createTransporter({
         host: organization.smtpHost,
-        port: organization.smtpPort || 587,
+        port: organization.smtpPort,
         user: organization.smtpEmail,
-        pass: organization.smtpPassword,
-      }),
-      from: `"${organization.smtpSenderName || organization.name}" <${organization.smtpEmail}>`,
-    };
+        pass: organization.smtpPassword
+      });
+      await transporter.sendMail({ from: organization.smtpEmail, to, subject, html });
+    } else {
+      // DEFAULT: Use Brevo API for platform emails
+      await sendViaAPI(to, subject, html, fromName);
+    }
+    console.log(`✅ Email sent to ${to}`);
+  } catch (error) {
+    console.error('❌ Email sending failed:', error.message);
+    throw error;
   }
-  return {
-    transporter: getPlatformTransporter(),
-    from: `"UEMS Platform" <${process.env.PLATFORM_EMAIL}>`,
-  };
 };
 
 // HTML email base template
@@ -113,35 +122,27 @@ const baseTemplate = (content, orgName, orgLogo) => `
 
 // Send OTP email
 const sendOTPEmail = async (email, otp, orgName, orgLogo) => {
-  try {
-    const content = `
-      <h2 style="color:#2d3748;margin-bottom:8px;">Email Verification</h2>
-      <p>Hello! Please use the verification code below to complete your registration for <span class="highlight">${orgName || 'UEMS'}</span>.</p>
-      <div class="otp-box">
-        <p style="color:#667eea;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Your Verification Code</p>
-        <div class="otp-code">${otp}</div>
-        <p style="color:#a0aec0;font-size:13px;margin-top:12px;margin-bottom:0;">Valid for 10 minutes only</p>
-      </div>
-      <p>Do not share this code with anyone. If you did not request this, please ignore this email.</p>
-    `;
-    
-    const transporter = getPlatformTransporter();
-    await transporter.sendMail({
-      from: `"${orgName || 'UEMS'}" <${process.env.PLATFORM_EMAIL}>`,
-      to: email,
-      subject: `${otp} - Email Verification Code | ${orgName || 'UEMS'}`,
-      html: baseTemplate(content, orgName, orgLogo),
-    });
-    console.log(`✅ OTP Email sent to ${email}`);
-  } catch (error) {
-    console.error('❌ Error sending OTP email:', error);
-    throw new Error('Failed to send verification email. Please check your SMTP settings.');
-  }
+  const content = `
+    <h2 style="color:#2d3748;margin-bottom:8px;">Email Verification</h2>
+    <p>Hello! Please use the verification code below to complete your registration for <span class="highlight">${orgName || 'UEMS'}</span>.</p>
+    <div class="otp-box">
+      <p style="color:#667eea;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Your Verification Code</p>
+      <div class="otp-code">${otp}</div>
+      <p style="color:#a0aec0;font-size:13px;margin-top:12px;margin-bottom:0;">Valid for 10 minutes only</p>
+    </div>
+    <p>Do not share this code with anyone. If you did not request this, please ignore this email.</p>
+  `;
+  
+  await sendEmail({
+    to: email,
+    subject: `${otp} - Email Verification Code | ${orgName || 'UEMS'}`,
+    html: baseTemplate(content, orgName, orgLogo),
+    fromName: orgName
+  });
 };
 
 // Send enquiry confirmation email
 const sendEnquiryConfirmation = async (enquiry, organization, branch) => {
-  const { transporter, from } = resolveTransporter(organization, branch);
   const content = `
     <h2 style="color:#2d3748;margin-bottom:8px;">Enquiry Received! 🎉</h2>
     <p>Dear <span class="highlight">${enquiry.name}</span>,</p>
@@ -156,18 +157,18 @@ const sendEnquiryConfirmation = async (enquiry, organization, branch) => {
     <p style="color:#a0aec0;font-size:13px;">We typically respond within 24 business hours. Feel free to reply to this email if you have any questions.</p>
   `;
   
-  await transporter.sendMail({
-    from,
+  await sendEmail({
     to: enquiry.email,
     subject: `Enquiry Received - ${enquiry.enquiryNumber} | ${organization.name}`,
     html: baseTemplate(content, organization.name, organization.logo),
+    organization,
+    branch
   });
 };
 
 // Send enquiry completed email
 const sendEnquiryCompleted = async (enquiry, organization, branch) => {
   if (!enquiry.email) return;
-  const { transporter, from } = resolveTransporter(organization, branch);
   const content = `
     <h2 style="color:#2d3748;margin-bottom:8px;">Enquiry Completed ✅</h2>
     <p>Dear <span class="highlight">${enquiry.name}</span>,</p>
@@ -175,17 +176,17 @@ const sendEnquiryCompleted = async (enquiry, organization, branch) => {
     <p>Thank you for choosing <strong>${organization.name}</strong>. We hope we were able to assist you effectively.</p>
   `;
   
-  await transporter.sendMail({
-    from,
+  await sendEmail({
     to: enquiry.email,
     subject: `Enquiry Completed - ${enquiry.enquiryNumber} | ${organization.name}`,
     html: baseTemplate(content, organization.name, organization.logo),
+    organization,
+    branch
   });
 };
 
 // Send trial expiry reminder
 const sendTrialExpiryReminder = async (organization, daysLeft) => {
-  const transporter = getPlatformTransporter();
   const content = `
     <h2 style="color:#e53e3e;margin-bottom:8px;">⚠️ Trial Expiring Soon</h2>
     <p>Hello <span class="highlight">${organization.name}</span>,</p>
@@ -195,17 +196,15 @@ const sendTrialExpiryReminder = async (organization, daysLeft) => {
     <p style="color:#a0aec0;font-size:13px;">If you have already upgraded, please disregard this email.</p>
   `;
   
-  await transporter.sendMail({
-    from: `"UEMS Platform" <${process.env.PLATFORM_EMAIL}>`,
+  await sendEmail({
     to: organization.email,
     subject: `⚠️ Your UEMS trial expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
-    html: baseTemplate(content, organization.name, organization.logo),
+    html: baseTemplate(content, organization.name, organization.logo)
   });
 };
 
 // Send payment confirmation with receipt
 const sendPaymentConfirmation = async (organization, plan, transaction) => {
-  const transporter = getPlatformTransporter();
   const receiptId = `UEMS-${Date.now().toString().slice(-8)}`;
   const paymentDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
   const validUntil = organization.subscriptionExpiry
@@ -235,11 +234,10 @@ const sendPaymentConfirmation = async (organization, plan, transaction) => {
     <p style="color:#a0aec0;font-size:13px;">Please keep this email as a record of your payment. If you have any questions, contact our support team.</p>
   `;
 
-  await transporter.sendMail({
-    from: `"UEMS Platform" <${process.env.PLATFORM_EMAIL}>`,
+  await sendEmail({
     to: organization.email,
     subject: `✅ Payment Receipt - ${plan.name} Plan Activated | UEMS`,
-    html: baseTemplate(content, organization.name, organization.logo),
+    html: baseTemplate(content, organization.name, organization.logo)
   });
 };
 

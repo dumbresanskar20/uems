@@ -14,7 +14,7 @@ const initAI = () => {
 initAI();
 
 const analyzeWithGemini = async (prompt) => {
-  const models = ['gemini-1.5-flash', 'gemini-pro'];
+  const models = ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-pro'];
   let lastError;
 
   for (const modelName of models) {
