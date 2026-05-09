@@ -248,5 +248,4 @@ module.exports = {
   sendTrialExpiryReminder,
   sendPaymentConfirmation,
   baseTemplate,
-  resolveTransporter,
 };
