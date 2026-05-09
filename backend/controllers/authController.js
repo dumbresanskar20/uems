@@ -128,8 +128,11 @@ const initiateOrgRegistration = async (req, res) => {
       email: email.toLowerCase(),
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error.' });
+    console.error('Registration Initiation Error:', err);
+    res.status(err.status || 500).json({ 
+      success: false, 
+      message: err.message || 'Server error during registration.' 
+    });
   }
 };
 
