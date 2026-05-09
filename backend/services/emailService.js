@@ -2,10 +2,21 @@ const nodemailer = require('nodemailer');
 
 // Create transporter based on SMTP settings
 const createTransporter = (smtpConfig) => {
+  // If it's gmail, using the 'service' property is more reliable
+  if (smtpConfig.host?.includes('gmail.com')) {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: smtpConfig.user,
+        pass: smtpConfig.pass,
+      },
+    });
+  }
+
   return nodemailer.createTransport({
     host: smtpConfig.host,
-    port: smtpConfig.port || 587,
-    secure: smtpConfig.port === 465,
+    port: parseInt(smtpConfig.port) || 587,
+    secure: parseInt(smtpConfig.port) === 465,
     auth: {
       user: smtpConfig.user,
       pass: smtpConfig.pass,
@@ -18,7 +29,7 @@ const createTransporter = (smtpConfig) => {
 const getPlatformTransporter = () => {
   return createTransporter({
     host: process.env.PLATFORM_SMTP_HOST,
-    port: parseInt(process.env.PLATFORM_SMTP_PORT) || 587,
+    port: process.env.PLATFORM_SMTP_PORT,
     user: process.env.PLATFORM_SMTP_USER,
     pass: process.env.PLATFORM_SMTP_PASS,
   });
@@ -103,24 +114,30 @@ const baseTemplate = (content, orgName, orgLogo) => `
 
 // Send OTP email
 const sendOTPEmail = async (email, otp, orgName, orgLogo) => {
-  const content = `
-    <h2 style="color:#2d3748;margin-bottom:8px;">Email Verification</h2>
-    <p>Hello! Please use the verification code below to complete your registration for <span class="highlight">${orgName || 'UEMS'}</span>.</p>
-    <div class="otp-box">
-      <p style="color:#667eea;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Your Verification Code</p>
-      <div class="otp-code">${otp}</div>
-      <p style="color:#a0aec0;font-size:13px;margin-top:12px;margin-bottom:0;">Valid for 10 minutes only</p>
-    </div>
-    <p>Do not share this code with anyone. If you did not request this, please ignore this email.</p>
-  `;
-  
-  const transporter = getPlatformTransporter();
-  await transporter.sendMail({
-    from: `"${orgName || 'UEMS'}" <${process.env.PLATFORM_EMAIL}>`,
-    to: email,
-    subject: `${otp} - Email Verification Code | ${orgName || 'UEMS'}`,
-    html: baseTemplate(content, orgName, orgLogo),
-  });
+  try {
+    const content = `
+      <h2 style="color:#2d3748;margin-bottom:8px;">Email Verification</h2>
+      <p>Hello! Please use the verification code below to complete your registration for <span class="highlight">${orgName || 'UEMS'}</span>.</p>
+      <div class="otp-box">
+        <p style="color:#667eea;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Your Verification Code</p>
+        <div class="otp-code">${otp}</div>
+        <p style="color:#a0aec0;font-size:13px;margin-top:12px;margin-bottom:0;">Valid for 10 minutes only</p>
+      </div>
+      <p>Do not share this code with anyone. If you did not request this, please ignore this email.</p>
+    `;
+    
+    const transporter = getPlatformTransporter();
+    await transporter.sendMail({
+      from: `"${orgName || 'UEMS'}" <${process.env.PLATFORM_EMAIL}>`,
+      to: email,
+      subject: `${otp} - Email Verification Code | ${orgName || 'UEMS'}`,
+      html: baseTemplate(content, orgName, orgLogo),
+    });
+    console.log(`✅ OTP Email sent to ${email}`);
+  } catch (error) {
+    console.error('❌ Error sending OTP email:', error);
+    throw new Error('Failed to send verification email. Please check your SMTP settings.');
+  }
 };
 
 // Send enquiry confirmation email
