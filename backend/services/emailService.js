@@ -1,7 +1,6 @@
 const nodemailer = require('nodemailer');
 
 // Create transporter based on SMTP settings
-// Create transporter based on SMTP settings
 const createTransporter = (smtpConfig) => {
   const port = parseInt(smtpConfig.port) || 587;
   const isGmail = smtpConfig.host?.includes('gmail.com');
@@ -17,11 +16,11 @@ const createTransporter = (smtpConfig) => {
   return nodemailer.createTransport({
     host: smtpConfig.host,
     port: port,
-    secure: port === 465, // Use SSL/TLS for port 465
+    secure: port === 465,
     auth: { user: smtpConfig.user, pass: smtpConfig.pass },
     tls: { rejectUnauthorized: false },
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 10000,
+    connectionTimeout: 8000, // 8 seconds
+    greetingTimeout: 8000,
   });
 };
 
@@ -29,7 +28,7 @@ const createTransporter = (smtpConfig) => {
 const getPlatformTransporter = () => {
   return createTransporter({
     host: process.env.PLATFORM_SMTP_HOST || 'smtp-relay.brevo.com',
-    port: process.env.PLATFORM_SMTP_PORT || 465, // Default to 465 for Render
+    port: process.env.PLATFORM_SMTP_PORT || 465,
     user: process.env.PLATFORM_SMTP_USER,
     pass: process.env.PLATFORM_SMTP_PASS,
   });

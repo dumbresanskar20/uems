@@ -14,9 +14,20 @@ const initAI = () => {
 initAI();
 
 const analyzeWithGemini = async (prompt) => {
-  const model = geminiClient.getGenerativeModel({ model: 'gemini-1.5-flash' });
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+  const models = ['gemini-1.5-flash', 'gemini-pro'];
+  let lastError;
+
+  for (const modelName of models) {
+    try {
+      const model = geminiClient.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (err) {
+      lastError = err;
+      console.warn(`Gemini model ${modelName} failed, trying next...`);
+    }
+  }
+  throw lastError;
 };
 
 const analyzeWithOpenAI = async (prompt) => {
