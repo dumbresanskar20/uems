@@ -13,15 +13,19 @@ const createTransporter = (smtpConfig) => {
     });
   }
 
+  // Standard SMTP configuration (works for Brevo, SendGrid, etc.)
   return nodemailer.createTransport({
     host: smtpConfig.host,
     port: parseInt(smtpConfig.port) || 587,
-    secure: parseInt(smtpConfig.port) === 465,
+    secure: parseInt(smtpConfig.port) === 465, // true for 465, false for other ports
     auth: {
       user: smtpConfig.user,
       pass: smtpConfig.pass,
     },
-    tls: { rejectUnauthorized: false },
+    // Brevo and others often require this
+    tls: {
+      rejectUnauthorized: false
+    }
   });
 };
 
