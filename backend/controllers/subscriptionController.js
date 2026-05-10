@@ -65,10 +65,12 @@ const createOrder = async (req, res) => {
     if (!plan) return res.status(404).json({ success: false, message: 'Plan not found.' });
 
     const razorpay = getRazorpayInstance();
+    const shortOrgId = req.user.orgId.toString().slice(-10);
+    const receiptId = `uems_${shortOrgId}_${Date.now().toString().slice(-7)}`;
     const order = await razorpay.orders.create({
       amount: plan.price * 100, // paise
       currency: plan.currency || 'INR',
-      receipt: `uems_${req.user.orgId}_${Date.now()}`,
+      receipt: receiptId,
       notes: { orgId: req.user.orgId.toString(), planId: planId },
     });
 
