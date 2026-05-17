@@ -45,7 +45,18 @@ io.on('connection', (socket) => {
 });
 
 // Security & middleware
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(helmet({ 
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://checkout.razorpay.com"],
+      frameSrc: ["'self'", "https://api.razorpay.com"],
+      connectSrc: ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com", "https://api.mixpanel.com"], // Mixpanel if used, else harmless
+      imgSrc: ["'self'", "data:", "https://*"],
+    },
+  },
+}));
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:5173',
