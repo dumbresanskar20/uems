@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, 'env') });
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -7,7 +8,6 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
 
 const connectDB = require('./config/database');
 const routes = require('./routes');
@@ -45,7 +45,18 @@ io.on('connection', (socket) => {
 });
 
 // Security & middleware
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(helmet({ 
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://checkout.razorpay.com"],
+      frameSrc: ["'self'", "https://api.razorpay.com"],
+      connectSrc: ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com", "https://api.mixpanel.com"], // Mixpanel if used, else harmless
+      imgSrc: ["'self'", "data:", "https://*"],
+    },
+  },
+}));
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:5173',

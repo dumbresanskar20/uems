@@ -2,7 +2,7 @@
  * Seed Annual Subscription Plans (10% discount on 12x monthly price)
  * Run: node utils/seedAnnualPlans.js
  */
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '../env') });
 const connectDB = require('../config/database');
 const { SubscriptionPlan } = require('../models');
 

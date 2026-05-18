@@ -2,7 +2,7 @@
  * Seed Quarterly (3-month, 3% off) and Semi-Annual (6-month, 5% off) Plans
  * Run: node utils/seedMultiCyclePlans.js
  */
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '../env') });
 const connectDB = require('../config/database');
 const { SubscriptionPlan } = require('../models');
 
