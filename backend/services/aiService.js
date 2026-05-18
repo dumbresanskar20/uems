@@ -14,7 +14,7 @@ const initAI = () => {
 initAI();
 
 const analyzeWithGemini = async (prompt) => {
-  const models = ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-pro'];
+  const models = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-pro-latest'];
   let lastError;
 
   for (const modelName of models) {
@@ -24,7 +24,7 @@ const analyzeWithGemini = async (prompt) => {
       return result.response.text();
     } catch (err) {
       lastError = err;
-      console.warn(`Gemini model ${modelName} failed, trying next...`);
+      console.warn(`Gemini model ${modelName} failed with error:`, err.message);
     }
   }
   throw lastError;

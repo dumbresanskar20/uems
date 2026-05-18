@@ -48,7 +48,7 @@ const OrgDropdown = ({ orgs, selected, onSelect }) => {
                 value={search} onChange={e => setSearch(e.target.value)}
               />
             </div>
-            <div className="max-h-48 overflow-y-auto">
+            <div className="max-h-60 overflow-y-auto pr-1">
               {filtered.map(org => (
                 <button
                   key={org._id} type="button"
@@ -93,7 +93,7 @@ export default function LoginPage() {
   }, [isAuthenticated, user, navigate]);
 
   useEffect(() => {
-    api.get('/auth/organizations').then(r => setOrgs(r.data.organizations)).catch(() => {});
+    api.get('/auth/organizations').then(r => setOrgs(r.data.organizations)).catch(() => { });
   }, []);
 
   const handleOrgSelect = async (org) => {
@@ -177,14 +177,14 @@ export default function LoginPage() {
         className="relative w-full max-w-md mx-4"
       >
         {/* Card */}
-        <div className="rounded-2xl overflow-hidden" style={{
+        <div className="rounded-2xl" style={{
           background: 'rgba(15,15,35,0.9)',
           backdropFilter: 'blur(30px)',
           border: '1px solid rgba(99,102,241,0.2)',
           boxShadow: '0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.1)',
         }}>
           {/* Header */}
-          <div className="p-8 pb-6" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(139,92,246,0.1) 100%)' }}>
+          <div className="p-8 pb-6 rounded-t-2xl" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(139,92,246,0.1) 100%)' }}>
             {selectedOrg ? (
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
@@ -258,7 +258,7 @@ export default function LoginPage() {
                   {selectedOrg && branches.length > 0 && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
                       <label className="block text-sm text-[var(--text-secondary)] mb-2">Branch <span className="text-xs text-gray-500">(optional)</span></label>
-                      <div className="space-y-2">
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                         <button
                           type="button"
                           onClick={() => { setSelectedBranch(null); setStep(3); }}

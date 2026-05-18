@@ -32,6 +32,23 @@ const createEnquiry = async (req, res) => {
     // Update org enquiry count
     await Organization.findByIdAndUpdate(orgId, { $inc: { totalEnquiries: 1 } });
 
+    // Send immediate notification
+    const io = req.app.get('io');
+    try {
+      const notification = await Notification.create({
+        organization: orgId,
+        branch: branchId,
+        type: 'new_enquiry',
+        title: 'New Enquiry Received',
+        message: `A new enquiry has been received from ${name}`,
+        data: { enquiryId: enquiry._id, enquiryNumber: enquiry.enquiryNumber },
+        priority: 'medium',
+      });
+      if (io) io.to(`org_${orgId}`).emit('notification', notification);
+    } catch(err) {
+      console.error('Notification error', err);
+    }
+
     // AI Analysis (async - don't wait)
     setImmediate(async () => {
       try {
@@ -79,7 +96,6 @@ const createEnquiry = async (req, res) => {
     }
 
     // Emit real-time update
-    const io = req.app.get('io');
     if (io) io.to(`org_${orgId}`).emit('new_enquiry', enquiry);
 
     // Activity log
@@ -112,7 +128,12 @@ const getEnquiries = async (req, res) => {
     if (branchId) filter.branch = branchId;
     else if (branch) filter.branch = branch;
     if (status) filter.status = status;
-    if (priority) filter.priority = priority;
+    if (priority) {
+      filter.priority = priority;
+      if (priority === 'urgent' && !status) {
+        filter.status = { $nin: ['completed', 'cancelled'] };
+      }
+    }
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -278,6 +299,10 @@ const getDashboardStats = async (req, res) => {
     const filter = { organization: orgId };
     if (branchId) filter.branch = branchId;
 
+    const mongoose = require('mongoose');
+    const aggFilter = { organization: new mongoose.Types.ObjectId(orgId) };
+    if (branchId) aggFilter.branch = new mongoose.Types.ObjectId(branchId);
+
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
@@ -285,15 +310,15 @@ const getDashboardStats = async (req, res) => {
     const [total, thisMonth, urgent, completed, byStatus, recentEnquiries, monthlyTrend] = await Promise.all([
       Enquiry.countDocuments(filter),
       Enquiry.countDocuments({ ...filter, createdAt: { $gte: startOfMonth } }),
-      Enquiry.countDocuments({ ...filter, priority: 'urgent' }),
+      Enquiry.countDocuments({ ...filter, priority: 'urgent', status: { $ne: 'completed' } }),
       Enquiry.countDocuments({ ...filter, status: 'completed' }),
       Enquiry.aggregate([
-        { $match: filter },
+        { $match: aggFilter },
         { $group: { _id: '$status', count: { $sum: 1 } } },
       ]),
       Enquiry.find(filter).sort({ createdAt: -1 }).limit(5).select('name email status priority createdAt enquiryNumber'),
       Enquiry.aggregate([
-        { $match: { ...filter, createdAt: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) } } },
+        { $match: { ...aggFilter, createdAt: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) } } },
         { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, count: { $sum: 1 } } },
         { $sort: { '_id.year': 1, '_id.month': 1 } },
       ]),

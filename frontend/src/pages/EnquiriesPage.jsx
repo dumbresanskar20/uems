@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { fetchEnquiries, deleteEnquiry, updateEnquiry, setSelectedEnquiry } from '../store/slices/enquirySlice';
@@ -19,9 +20,10 @@ export default function EnquiriesPage() {
   const { enquiries, pagination, loading } = useSelector(s => s.enquiry);
   const { user } = useSelector(s => s.auth);
 
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
+  const [priorityFilter, setPriorityFilter] = useState(searchParams.get('priority') || '');
   const [page, setPage] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [detailEnquiry, setDetailEnquiry] = useState(null);

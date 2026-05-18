@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { fetchDashboardStats } from '../store/slices/enquirySlice';
 import api from '../services/api';
@@ -12,10 +13,11 @@ import { Link } from 'react-router-dom';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-const StatCard = ({ icon: Icon, label, value, sub, color, delay }) => (
+const StatCard = ({ icon: Icon, label, value, sub, color, delay, onClick }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}
-    className="card-hover rounded-2xl p-6 relative overflow-hidden"
+    onClick={onClick}
+    className={`card-hover rounded-2xl p-6 relative overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
     style={{ background: 'rgba(15,15,35,0.8)', border: '1px solid rgba(99,102,241,0.12)' }}
   >
     <div className="absolute inset-0 opacity-30" style={{ background: `radial-gradient(circle at 80% 20%, ${color}15, transparent 60%)` }} />
@@ -52,6 +54,7 @@ const STATUS_COLORS = {
 
 export default function DashboardPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { stats } = useSelector(s => s.enquiry);
   const { user } = useSelector(s => s.auth);
   const [aiInsights, setAiInsights] = useState([]);
@@ -115,10 +118,10 @@ export default function DashboardPage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Inbox} label="Total Enquiries" value={stats?.total || 0} sub="All time" color="#6366f1" delay={0} />
-        <StatCard icon={TrendingUp} label="This Month" value={stats?.thisMonth || 0} sub="New enquiries" color="#8b5cf6" delay={0.05} />
-        <StatCard icon={AlertTriangle} label="Urgent" value={stats?.urgent || 0} sub="Need attention" color="#ef4444" delay={0.1} />
-        <StatCard icon={CheckCircle} label="Completed" value={stats?.completed || 0} sub={`${stats?.conversionRate || 0}% conversion`} color="#22c55e" delay={0.15} />
+        <StatCard icon={Inbox} label="Total Enquiries" value={stats?.total || 0} sub="All time" color="#6366f1" delay={0} onClick={() => navigate('/dashboard/enquiries')} />
+        <StatCard icon={TrendingUp} label="This Month" value={stats?.thisMonth || 0} sub="New enquiries" color="#8b5cf6" delay={0.05} onClick={() => navigate('/dashboard/enquiries')} />
+        <StatCard icon={AlertTriangle} label="Urgent" value={stats?.urgent || 0} sub="Need attention" color="#ef4444" delay={0.1} onClick={() => navigate('/dashboard/enquiries?priority=urgent')} />
+        <StatCard icon={CheckCircle} label="Completed" value={stats?.completed || 0} sub={`${stats?.conversionRate || 0}% conversion`} color="#22c55e" delay={0.15} onClick={() => navigate('/dashboard/enquiries?status=completed')} />
       </div>
 
       {/* Charts Row */}
