@@ -258,7 +258,7 @@ export default function LoginPage() {
                     {selectedOrg && branches.length > 0 && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                         <label className="block text-sm font-bold text-[#94A3B8] uppercase tracking-wider mt-5 mb-2">Branch Selection <span className="text-xs text-[#94A3B8]/60 font-normal normal-case">(optional)</span></label>
-                        <div className="space-y-3">
+                        <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-1">
                           <button
                             type="button"
                             onClick={() => { setSelectedBranch(null); setStep(3); }}

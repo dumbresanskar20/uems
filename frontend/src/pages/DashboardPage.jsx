@@ -19,10 +19,11 @@ const STATUS_COLORS = {
   follow_up: '#06B6D4', completed: '#10B981', cancelled: '#EF4444',
 };
 
-const StatCard = ({ icon: Icon, label, value, sub, color, delay, trend }) => (
+const StatCard = ({ icon: Icon, label, value, sub, color, delay, trend, onClick }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-    className="relative overflow-hidden rounded-2xl glass p-6 group card-hover"
+    onClick={onClick}
+    className={`relative overflow-hidden rounded-2xl glass p-6 group card-hover ${onClick ? 'cursor-pointer' : ''}`}
   >
     {/* Background Glow */}
     <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-[40px] opacity-20 group-hover:opacity-40 transition-opacity" style={{ background: color }} />
@@ -168,10 +169,10 @@ export default function DashboardPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard icon={Inbox} label="Total Enquiries" value={stats?.total || 0} sub="All time" color="#8B5CF6" delay={0.1} trend={14} />
-        <StatCard icon={TrendingUp} label="Monthly Growth" value={stats?.thisMonth || 0} sub="vs last month" color="#3B82F6" delay={0.2} trend={8} />
-        <StatCard icon={AlertTriangle} label="Pending Follow-ups" value={stats?.urgent || 0} sub="Require action" color="#EF4444" delay={0.3} trend={-2} />
-        <StatCard icon={CheckCircle} label="Conversion Rate" value={`${stats?.conversionRate || 0}%`} sub="Average" color="#10B981" delay={0.4} trend={5} />
+        <StatCard icon={Inbox} label="Total Enquiries" value={stats?.total || 0} sub="All time" color="#8B5CF6" delay={0.1} trend={14} onClick={() => navigate('/dashboard/enquiries')} />
+        <StatCard icon={TrendingUp} label="Monthly Growth" value={stats?.thisMonth || 0} sub="vs last month" color="#3B82F6" delay={0.2} trend={8} onClick={() => navigate('/dashboard/enquiries')} />
+        <StatCard icon={AlertTriangle} label="Pending Follow-ups" value={stats?.urgent || 0} sub="Require action" color="#EF4444" delay={0.3} trend={-2} onClick={() => navigate('/dashboard/enquiries?priority=urgent')} />
+        <StatCard icon={CheckCircle} label="Conversion Rate" value={`${stats?.conversionRate || 0}%`} sub="Average" color="#10B981" delay={0.4} trend={5} onClick={() => navigate('/dashboard/enquiries?status=completed')} />
       </div>
 
       {/* Charts & Analytics Section */}
